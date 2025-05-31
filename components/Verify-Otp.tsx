@@ -1,18 +1,30 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "@/redux/store"; 
-import { setPhoneAndCode } from "@/redux/auth/authSlice";
 import { useRouter } from "next/navigation";
-import axiosInstance from "@/lib/axios"; 
+import axiosInstance from "@/lib/axios";
 import { toast, Toaster } from "react-hot-toast";
+import { useDispatch } from "react-redux";
+import { setPhoneAndCode } from "@/redux/auth/authSlice";
 
-export default function VerifyOtp() {
-  const dispatch = useDispatch();
+interface OtpVerificationProps {
+  phone: string;
+  postUrl: string;
+  resendUrl: string;
+  redirectUrl: string;
+  usage?: string;
+  onSuccess?: (code: string) => void;
+}
+
+export default function OtpVerification({
+  phone,
+  postUrl,
+  resendUrl,
+  redirectUrl,
+  usage = "general",
+  onSuccess,
+}: OtpVerificationProps) {
   const router = useRouter();
-  
-  const phone = useSelector((state: RootState) => state.auth.phone);
-
+  const dispatch = useDispatch();
   const [code, setCode] = useState(["", "", "", ""]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [error, setError] = useState("");
@@ -21,15 +33,8 @@ export default function VerifyOtp() {
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    if (!phone) {
-      const savedPhone = localStorage.getItem("forgotPasswordPhone");
-      if (savedPhone) {
-        dispatch(setPhoneAndCode({ phone: savedPhone, code: "" }));
-      } else {
-        router.push("/change-phone");
-      }
-    }
-  }, [phone, dispatch, router]);
+    if (!phone) router.push("/change-phone");
+  }, [phone, router]);
 
   useEffect(() => {
     if (timer === 0) return;
@@ -41,16 +46,22 @@ export default function VerifyOtp() {
     inputsRef.current[activeIndex]?.focus();
   }, [activeIndex]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>, idx: number) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    idx: number
+  ) => {
     const val = e.target.value;
-    if (!/^\d?$/.test(val)) return; 
+    if (!/^\d?$/.test(val)) return;
     const newCode = [...code];
     newCode[idx] = val;
     setCode(newCode);
-    if (val && idx < 3) setActiveIndex(idx + 1); 
+    if (val && idx < 3) setActiveIndex(idx + 1);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, idx: number) => {
+  const handleKeyDown = (
+    e: React.KeyboardEvent<HTMLInputElement>,
+    idx: number
+  ) => {
     if (e.key === "Backspace") {
       if (code[idx]) {
         const newCode = [...code];
@@ -68,30 +79,29 @@ export default function VerifyOtp() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(""); // Clear previous errors
-    if (!phone) {
-      toast.error("Phone number not found. Please go back and try again.");
-      return router.push("/change-phone");
-    }
+    setError("");
 
     const otp = code.join("");
-    if (otp.length < 4) {
-      setError("Please enter a 4-digit code.");
-      return;
-    }
+    if (otp.length < 4) return setError("Please enter a 4-digit code.");
 
     setLoading(true);
     toast.loading("Verifying code...", { id: "verify-toast" });
 
     try {
-      await axiosInstance.post("api/auth/verify", { phone, code: otp });
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const response = await axiosInstance.post(postUrl, {
+        phone,
+        code: otp,
+        usage,
+      });
       toast.success("Code verified! Redirecting...", { id: "verify-toast" });
-      dispatch(setPhoneAndCode({ phone, code: otp })); 
-      localStorage.removeItem("forgotPasswordPhone");
-      router.push("/login"); 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      dispatch(setPhoneAndCode({ phone: phone, code: otp }));
+
+      if (onSuccess) onSuccess(otp);
+      router.push(redirectUrl);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
-      const message = err.response?.data?.message || "Invalid code, please try again.";
+      const message = err.response?.data?.message || "Invalid code, try again.";
       setError(message);
       toast.error(message, { id: "verify-toast" });
     } finally {
@@ -100,24 +110,17 @@ export default function VerifyOtp() {
   };
 
   const resendCode = async () => {
-    if (!phone) {
-      toast.error("Phone number missing for resend. Please go back.");
-      return router.push("/change-phone");
-    }
     setLoading(true);
     setError("");
     toast.loading("Sending code...", { id: "send-code-toast" });
 
     try {
-      await axiosInstance.post("api/auth/send-code", {
-        phone,
-        usage: "verify", 
-      });
+      await axiosInstance.post(resendUrl, { phone, usage });
       setCode(["", "", "", ""]);
       setActiveIndex(0);
-      setTimer(60); 
+      setTimer(60);
       toast.success("Code resent!", { id: "send-code-toast" });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       const message = err.response?.data?.message || "Failed to resend code.";
       setError(message);
@@ -128,19 +131,24 @@ export default function VerifyOtp() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 px-4 py-10">
+    <div className="flex min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex-col items-center justify-center  px-4 py-10">
       <Toaster position="top-right" />
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-md bg-white/10 backdrop-blur p-8 rounded-xl shadow-lg space-y-6 border border-gray-700"
       >
-        <h2 className="text-2xl font-bold text-white text-center">Enter Verification Code</h2>
+        <h2 className="text-2xl font-bold text-white text-center">
+          Enter Verification Code
+        </h2>
+
         <div className="flex justify-between gap-4">
           {code.map((digit, i) => (
             <input
               key={i}
-               ref={(el) => {
-                inputsRef.current[i] = el;
+              ref={(el) => {
+                if (el) {
+                  inputsRef.current[i] = el;
+                }
               }}
               type="text"
               maxLength={1}
@@ -163,7 +171,7 @@ export default function VerifyOtp() {
         </button>
 
         <div className="text-center text-sm text-gray-300">
-          Didnt get the code?{" "}
+          Didn’t get the code?{" "}
           <button
             onClick={resendCode}
             type="button"

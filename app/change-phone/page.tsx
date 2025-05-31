@@ -1,13 +1,12 @@
 "use client";
-
 import { useState } from "react";
 import { BsTelephone } from "react-icons/bs";
 import { FiLock } from "react-icons/fi";
 import { motion } from "framer-motion";
 import { toast, Toaster } from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
-import { useRouter } from "next/navigation";
 import { z, ZodError } from "zod";
+import { RootState } from "@/redux/store";
 
 import Input from "@/components/inputs/Input";
 import axiosInstance from "@/lib/axios";
@@ -16,7 +15,8 @@ import {
   registerSuccess,
   registerFailure,
 } from "@/redux/auth/authSlice";
-import { RootState } from "@/redux/store";
+import OtpVerification from "@/components/Verify-Otp";
+
 
 const formSchema = z.object({
   newPhone: z.string().min(1, "New phone number is required"),
@@ -27,8 +27,6 @@ type FormData = z.infer<typeof formSchema>;
 
 export default function ChangePhone() {
   const dispatch = useDispatch();
-  const router = useRouter();
-
   const { loading, error } = useSelector((state: RootState) => state.auth);
 
   const [formData, setFormData] = useState<FormData>({
@@ -37,6 +35,8 @@ export default function ChangePhone() {
   });
 
   const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
+  const [showVerifyOtp, setShowVerifyOtp] = useState(false);
+  const [otpPhone, setOtpPhone] = useState<string>("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -57,19 +57,16 @@ export default function ChangePhone() {
       });
 
       const { token, phone } = data;
-
       await axiosInstance.post("api/auth/send-code", {
         phone: formData.newPhone,
         usage: "verify",
       });
-
       dispatch(registerSuccess({ token, phone }));
       localStorage.setItem("forgotPasswordPhone", formData.newPhone);
 
       toast.success("Phone number updated! OTP sent.", { id: toastId });
-
-      setFormData({ newPhone: "", password: "" });
-      router.push("/change-phone/verify-otp-phone");
+      setOtpPhone(formData.newPhone);
+      setShowVerifyOtp(true);
     } catch (err: unknown) {
       if (err instanceof ZodError) {
         const validationErrors: Partial<Record<keyof FormData, string>> = {};
@@ -88,8 +85,23 @@ export default function ChangePhone() {
     }
   };
 
+  if (showVerifyOtp && otpPhone) {
+    return (
+      <OtpVerification
+        phone={otpPhone}
+        postUrl="api/auth/verify"
+        resendUrl="api/auth/send-code"
+        redirectUrl="/login" 
+        usage="verify"
+        onSuccess={() => {
+          toast.success("Phone verified successfully!");
+        }}
+      />
+    );
+  }
+
   return (
-    <main className="bg-gray-500 min-h-screen flex items-center justify-center px-4 py-10 text-white relative">
+    <main className="bg-gray-500 min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center px-4 py-10 text-white relative">
       <Toaster position="top-right" />
 
       {loading && (

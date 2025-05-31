@@ -1,5 +1,5 @@
 "use client";
-import { useDispatch, useSelector } from "react-redux";
+import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FormSchema, FormSchemaType } from "@/schema/validations";
@@ -7,7 +7,6 @@ import Input from "@/components/inputs/Input";
 import { CiUser } from "react-icons/ci";
 import { BsTelephone } from "react-icons/bs";
 import { FiLock, FiMail } from "react-icons/fi";
-import { motion } from "framer-motion";
 import Link from "next/link";
 import { toast, Toaster } from "react-hot-toast";
 import axiosInstance from "@/lib/axios";
@@ -18,7 +17,8 @@ import {
 } from "@/redux/auth/authSlice";
 import { RootState } from "@/redux/store";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import OtpVerification from "@/components/Verify-Otp"; 
 
 const getPasswordScore = (password: string) => {
   let score = 0;
@@ -35,6 +35,8 @@ export default function RegisterPage() {
   const dispatch = useDispatch();
   const router = useRouter();
   const { loading } = useSelector((state: RootState) => state.auth);
+  const [isOtpStep, setIsOtpStep] = useState(false);
+  const [registeredPhone, setRegisteredPhone] = useState("");
 
   const {
     register,
@@ -45,14 +47,11 @@ export default function RegisterPage() {
     resolver: zodResolver(FormSchema),
   });
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [password, setPassword] = useState("");
   const passwordValue = watch("password", "");
   const passwordScore = getPasswordScore(passwordValue);
 
   const onSubmit = async (data: FormSchemaType) => {
     dispatch(registerStart());
-
     const payload = {
       name: data.username,
       email: data.email,
@@ -62,14 +61,12 @@ export default function RegisterPage() {
     };
 
     try {
-      const response = await axiosInstance.post("api/auth/register", payload);
-
+      const response = await axiosInstance.post("/api/auth/register", payload);
       if (response.status === 201 || response.status === 200) {
-        // Assuming response.data contains a token
-        const token = response.data.token || "";
-        dispatch(registerSuccess({ token, phone: data.phone }));
-        toast.success("Registration successful!");
-        router.push("/sign-up/verify-code-signup");
+        setRegisteredPhone(data.phone);
+        setIsOtpStep(true);
+        dispatch(registerSuccess({ token: "", phone: data.phone }));
+        toast.success("Registration successful! Please verify OTP.");
       } else {
         throw new Error("Registration failed.");
       }
@@ -79,169 +76,120 @@ export default function RegisterPage() {
         error?.response?.data?.message || error.message || "Registration failed.";
       dispatch(registerFailure(message));
       toast.error(message);
-      console.error("Registration error:", error);
     }
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        delayChildren: 0.1,
-        staggerChildren: 0.07,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 15,
-      },
-    },
-  };
+  if (isOtpStep) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 px-4 py-10">
+        <Toaster position="top-right" />
+        <OtpVerification
+          phone={registeredPhone}
+          postUrl="/api/auth/verify"
+          resendUrl="/api/auth/send-code"
+          redirectUrl="/login"
+          onSuccess={() => router.push("/login")}
+        />
+      </main>
+    );
+  }
 
   return (
-    <main className="bg-dark-100 text-white flex items-center justify-center px-4 py-10">
-      <Toaster position="top-right" />
-
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 px-4 py-10">
+      <Toaster position="top-center" />
       {loading && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
           <div className="w-16 h-16 border-4 border-t-transparent border-[#E7C9A5] rounded-full animate-spin"></div>
           <span className="ml-4 text-lg font-semibold text-white">Loading...</span>
         </div>
       )}
+      <div className="w-full max-w-md">
+        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl shadow-2xl p-8 md:p-10 text-white">
+          <h2 className="text-3xl font-bold mb-6 text-center">Create Account</h2>
 
-      <motion.form
-        onSubmit={handleSubmit(onSubmit)}
-        className="w-full max-w-lg space-y-5 bg-gradient-to-br from-[#12141D] to-[#12151F] p-6 md:p-8 rounded-xl shadow-lg relative z-10"
-        initial="hidden"
-        animate="visible"
-        variants={containerVariants}
-      >
-        <motion.h2
-          className="text-2xl font-bold mb-2 text-center"
-          variants={itemVariants}
-        >
-          Create Account
-        </motion.h2>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <Input
+              label="Username"
+              type="text"
+              icon={<CiUser />}
+              placeholder="Your username"
+              {...register("username")}
+              error={errors.username?.message}
+            />
 
-        <motion.div variants={itemVariants}>
-          <Input
-            label="Username"
-            type="text"
-            icon={<CiUser />}
-            placeholder="Your username"
-            {...register("username")}
-            error={errors.username?.message}
-          />
-        </motion.div>
+            <Input
+              label="Email"
+              type="email"
+              icon={<FiMail />}
+              placeholder="example@domain.com"
+              {...register("email")}
+              error={errors.email?.message}
+            />
 
-        <motion.div variants={itemVariants}>
-          <Input
-            label="Email"
-            type="email"
-            icon={<FiMail />}
-            placeholder="example@domain.com"
-            {...register("email")}
-            error={errors.email?.message}
-          />
-        </motion.div>
+            <Input
+              label="Phone Number"
+              type="text"
+              icon={<BsTelephone />}
+              placeholder="+(XXX) XXX-XXXX"
+              {...register("phone")}
+              error={errors.phone?.message}
+            />
 
-        <motion.div variants={itemVariants}>
-          <Input
-            label="Phone Number"
-            type="text"
-            icon={<BsTelephone />}
-            placeholder="+(XXX) XXX-XXXX"
-            {...register("phone")}
-            error={errors.phone?.message}
-          />
-        </motion.div>
+            <Input
+              label="Password"
+              type="password"
+              icon={<FiLock />}
+              placeholder="********"
+              {...register("password")}
+              error={errors.password?.message}
+            />
 
-        <motion.div variants={itemVariants}>
-          <Input
-            label="Password"
-            type="password"
-            icon={<FiLock />}
-            placeholder="********"
-            {...register("password", {
-              onChange: (e) => setPassword(e.target.value),
-            })}
-            error={errors.password?.message}
-          />
-        </motion.div>
+            {passwordValue && (
+              <div className="flex gap-1 mt-1">
+                {Array(5).fill(0).map((_, i) => (
+                  <span key={i} className="w-full h-2 rounded-xl overflow-hidden bg-gray-300">
+                    <div
+                      className={`h-full ${
+                        i < passwordScore
+                          ? passwordScore <= 2
+                            ? "bg-red-400"
+                            : passwordScore < 4
+                            ? "bg-yellow-400"
+                            : "bg-green-500"
+                          : "bg-gray-300"
+                      }`}
+                      style={{ width: i < passwordScore ? "100%" : "0%" }}
+                    />
+                  </span>
+                ))}
+              </div>
+            )}
+            <Input
+              label="Confirm Password"
+              type="password"
+              icon={<FiLock />}
+              placeholder="********"
+              {...register("password_confirmation")}
+              error={errors.password_confirmation?.message}
+            />
 
-        {passwordValue.length > 0 && (
-          <motion.div
-            className="flex gap-1 mt-1"
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            {Array(5)
-              .fill(0)
-              .map((_, i) => (
-                <motion.span
-                  key={i}
-                  className="w-full h-2 rounded-xl overflow-hidden"
-                >
-                  <motion.div
-                    className={`h-full ${
-                      i < passwordScore
-                        ? passwordScore <= 2
-                          ? "bg-red-400"
-                          : passwordScore < 4
-                          ? "bg-yellow-400"
-                          : "bg-green-500"
-                        : "bg-gray-300"
-                    }`}
-                    initial={{ width: 0 }}
-                    animate={{ width: i < passwordScore ? "100%" : "0%" }}
-                    transition={{ duration: 0.3, delay: i * 0.05 }}
-                  />
-                </motion.span>
-              ))}
-          </motion.div>
-        )}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-[#E7C9A5] text-black font-semibold rounded-lg hover:bg-[#d6b58f] transition duration-200"
+            >
+              {loading ? "Registering..." : "Register"}
+            </button>
 
-        <motion.div variants={itemVariants}>
-          <Input
-            label="Confirm Password"
-            type="password"
-            icon={<FiLock />}
-            placeholder="********"
-            {...register("password_confirmation")}
-            error={errors.password_confirmation?.message}
-          />
-        </motion.div>
-
-        <motion.button
-          type="submit"
-          className="w-full py-2 px-4 rounded bg-[#E7C9A5] transition-colors duration-200 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-[#C9AB89] font-semibold text-gray-900"
-          disabled={loading}
-          variants={itemVariants}
-        >
-          {loading ? "Registering..." : "Register"}
-        </motion.button>
-
-        <motion.div
-          className="mt-3 text-center text-sm text-gray-400"
-          variants={itemVariants}
-        >
-          Already have an account?{" "}
-          <Link href="/login" className="text-[#E7C9A5] hover:underline">
-            Login
-          </Link>
-        </motion.div>
-      </motion.form>
+            <p className="mt-6 text-center text-sm text-gray-300">
+              Already have an account?{" "}
+              <Link href="/login" className="font-medium text-[#E7C9A5] hover:text-[#d6b58f] hover:underline transition">
+                Login
+              </Link>
+            </p>
+          </form>
+        </div>
+      </div>
     </main>
   );
 }

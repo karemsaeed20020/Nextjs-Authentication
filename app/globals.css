@@ -26,32 +26,32 @@ body {
 }
 
 html, body {
-  overflow: hidden;
-  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 100%;
 }
 
 @layer components {
-  /* Define the animation for your moving background */
   .animate-gradient-bg {
-    background-size: 400% 400%; /* Make the background larger than the container */
-    animation: gradient-move 15s ease infinite; /* Adjust time as desired */
+    background-size: 400% 400%;
+    animation: gradient-move 15s ease infinite;
   }
 
   @keyframes gradient-move {
     0% {
-      background-position: 0% 0%; /* Top-left */
+      background-position: 0% 0%; 
     }
     25% {
-      background-position: 100% 0%; /* Top-right */
+      background-position: 100% 0%; 
     }
     50% {
-      background-position: 100% 100%; /* Bottom-right */
+      background-position: 100% 100%; 
     }
     75% {
-      background-position: 0% 100%; /* Bottom-left */
+      background-position: 0% 100%; 
     }
     100% {
-      background-position: 0% 0%; /* Back to top-left */
+      background-position: 0% 0%; 
     }
   }
 }

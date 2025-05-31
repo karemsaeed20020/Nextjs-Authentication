@@ -97,7 +97,7 @@ export default function ChangePassword() {
   };
 
   return (
-    <main className="bg-gradient-to-br  flex items-center justify-center px-4 py-10 text-white relative">
+    <main className="bg-gradient-to-br h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900  flex items-center justify-center px-4 py-10 text-white relative">
       <Toaster position="top-center" />
       <motion.form
         onSubmit={(e) => {

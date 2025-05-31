@@ -12,6 +12,8 @@ import { toast, Toaster } from "react-hot-toast";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "@/redux/store";
 import { setLoading, setForgotPasswordPhone } from "@/redux/auth/authSlice";
+import { useState } from "react";
+import OtpVerification from "@/components/Verify-Otp";
 
 const FormSchema = z.object({
   phone: z.string().min(1, "Phone number is required"),
@@ -23,12 +25,17 @@ export default function ForgotPassword() {
   const router = useRouter();
   const dispatch = useDispatch();
   const loading = useSelector((state: RootState) => state.auth.loading);
+  const forgotPasswordPhone = useSelector(
+    (state: RootState) => state.auth.phone 
+  );
+  const [showOtpVerification, setShowOtpVerification] = useState(false);
 
   const {
     register,
     handleSubmit,
     formState: { errors },
     setError,
+    getValues,
   } = useForm<FormSchemaType>({
     resolver: zodResolver(FormSchema),
     mode: "onTouched",
@@ -49,7 +56,7 @@ export default function ForgotPassword() {
           id: "send-code-toast",
         });
         dispatch(setForgotPasswordPhone(data.phone));
-        router.push("/verify-otp");
+        setShowOtpVerification(true);
       } else {
         const message =
           response.data?.message || "Failed to send reset code.";
@@ -61,7 +68,7 @@ export default function ForgotPassword() {
           setError("phone", { type: "manual", message });
         }
       }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       const errorMessage =
         error.response?.data?.message || "Failed to send reset code.";
@@ -78,6 +85,10 @@ export default function ForgotPassword() {
     } finally {
       dispatch(setLoading(false));
     }
+  };
+
+  const handleOtpSuccess = () => {
+    router.push("/reset-password");
   };
 
   const formVariants = {
@@ -123,8 +134,21 @@ export default function ForgotPassword() {
     whileHover: { scale: 1.02 },
   };
 
+  if (showOtpVerification) {
+    return (
+      <OtpVerification
+        phone={forgotPasswordPhone || getValues("phone")}
+        postUrl="api/auth/verify-code"
+        resendUrl="api/auth/send-code"
+        redirectUrl="/reset-password"
+        usage="forget_password"
+        onSuccess={handleOtpSuccess}
+      />
+    );
+  }
+
   return (
-    <div className="flex items-center justify-center px-4 py-10 w-full min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900 animate-gradient-bg">
+    <div className="flex items-center justify-center px-4 py-10 w-full min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 animate-gradient-bg">
       <Toaster position="top-right" />
       {loading && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">

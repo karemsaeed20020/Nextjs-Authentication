@@ -1,6 +1,5 @@
 import React from 'react'
 import { motion } from "framer-motion";
-import Link from 'next/link';
 
 const Hero = () => {
   return (
@@ -13,11 +12,6 @@ const Hero = () => {
         >
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4">Welcome to Kareem</h1>
           <p className="text-lg md:text-xl mb-6">Scroll down to learn more.</p>
-          <Link href="/sign-up">
-            <button className="px-6 py-3 bg-white text-indigo-600 font-semibold rounded-full hover:bg-indigo-100 transition">
-              Get Started
-            </button>
-          </Link>
         </motion.div>
       </section>
       <section className="py-20 px-6 bg-gray-50 text-gray-800">

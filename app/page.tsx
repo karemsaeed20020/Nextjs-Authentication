@@ -1,5 +1,4 @@
 "use client";
-import Footer from "@/components/Footer";
 import Hero from "@/components/Hero";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -91,7 +90,6 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* Hamburger for small screens (optional) */}
         <button
           onClick={() => setOpen(!open)}
           aria-label="Toggle menu"
@@ -111,8 +109,51 @@ export default function HomePage() {
         </button>
       </nav>
 
+      {/* Mobile Navigation */}
+      {open && (
+        <div className="sm:hidden bg-white shadow-md py-2 border-b border-gray-200">
+          <Link href="/about" className="block px-4 py-2 text-black hover:bg-gray-100">
+            About
+          </Link>
+          <Link href="/contact" className="block px-4 py-2 text-black hover:bg-gray-100">
+            Contact
+          </Link>
+          {isLoggedIn && (
+            <>
+              <Link
+                href="/change-password"
+                className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                onClick={() => setOpen(false)}
+              >
+                Change Password
+              </Link>
+              <Link
+                href="/change-phone"
+                className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                onClick={() => setOpen(false)}
+              >
+                Change Phone
+              </Link>
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setOpen(false);
+                }}
+                className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
+              >
+                Logout
+              </button>
+            </>
+          )}
+          {!isLoggedIn && (
+            <Link href="/login" className="block px-4 py-2 text-indigo-600 hover:bg-gray-100">
+              Login
+            </Link>
+          )}
+        </div>
+      )}
+
       <Hero />
-      <Footer />
     </main>
   );
 }
